@@ -50,7 +50,9 @@ No service-account key file — auth is Workload Identity Federation via Vercel 
 
 ## Visual system
 
-Vivid multi-hue glass design (electric indigo primary; amber = pending,
-blue = processing, red = issue, green = success). Heavy effects — R3F 3D hero,
-tsParticles, Lenis smooth-scroll — are lazy-loaded on hero surfaces only and
-disable under `prefers-reduced-motion`.
+Brand-matched to **setmiindia.com**: deep teal-blue `#005a84` primary, sky-cyan
+`#6EC1E4`, amber `#FF8F00` for CTAs; semantic status hues (amber = pending,
+blue = processing, red = issue, green = success). Type: **Lato** headings +
+**Inter** body. Light is the default; dark is a toggle. Heavy effects — R3F 3D
+hero, tsParticles, Lenis smooth-scroll, Motion transitions + confetti — are
+lazy-loaded on hero surfaces only and disable under `prefers-reduced-motion`.

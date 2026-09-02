@@ -27,20 +27,20 @@ export default function Scene3D({ className }: { className?: string }) {
   return (
     <div className={className} style={{ position: 'absolute', inset: 0, zIndex: 0, pointerEvents: 'none' }} aria-hidden>
       <Canvas camera={{ position: [0, 0, 6], fov: 45 }} dpr={[1, 1.5]} gl={{ antialias: true, alpha: true }}>
-        <ambientLight intensity={0.7} />
-        <directionalLight position={[4, 5, 3]} intensity={1.3} color="#a58bff" />
-        <pointLight position={[-4, -2, 2]} intensity={40} color="#22d3ee" />
+        <ambientLight intensity={0.85} />
+        <directionalLight position={[4, 5, 3]} intensity={1.4} color="#6ec1e4" />
+        <pointLight position={[-4, -2, 2]} intensity={40} color="#0a7bab" />
 
         <Float speed={1.1} rotationIntensity={1.4} floatIntensity={1.2}>
-          <Icosahedron args={[1.4, 6]} position={[0, 0, 0]}>
-            <MeshDistortMaterial color="#7c5cff" emissive="#4321a8" emissiveIntensity={0.35} distort={0.34} speed={1.6} roughness={0.25} />
+          <Icosahedron args={[1.05, 6]} position={[3.15, -0.2, -0.8]}>
+            <MeshDistortMaterial color="#0a7bab" emissive="#00344d" emissiveIntensity={0.3} distort={0.32} speed={1.5} roughness={0.28} />
           </Icosahedron>
         </Float>
 
-        <Parcel position={[-2.6, 1.1, -0.5]} color="#22d3ee" scale={0.7} />
-        <Parcel position={[2.7, -0.8, -0.4]} color="#f472b6" scale={0.85} />
-        <Parcel position={[2.1, 1.6, -1.2]} color="#a58bff" scale={0.55} />
-        <Parcel position={[-2.3, -1.5, -1]} color="#f5a524" scale={0.6} />
+        <Parcel position={[3.9, 1.7, -0.8]} color="#6ec1e4" scale={0.6} />
+        <Parcel position={[4.2, -1.2, -0.6]} color="#ff8f00" scale={0.72} />
+        <Parcel position={[1.6, 1.9, -1.4]} color="#0693e3" scale={0.5} />
+        <Parcel position={[2.0, -1.9, -1.1]} color="#005a84" scale={0.55} />
       </Canvas>
     </div>
   );

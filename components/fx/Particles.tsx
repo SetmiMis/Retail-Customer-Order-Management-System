@@ -27,8 +27,8 @@ export default function ParticleField({ density = 1, className }: { density?: nu
       detectRetina: true,
       particles: {
         number: { value: Math.round(46 * density), density: { enable: true } },
-        color: { value: ['#7c5cff', '#22d3ee', '#f472b6'] },
-        links: { enable: true, color: '#7c5cff', distance: 130, opacity: 0.22, width: 1 },
+        color: { value: ['#005a84', '#6ec1e4', '#ff8f00'] },
+        links: { enable: true, color: '#0a7bab', distance: 130, opacity: 0.2, width: 1 },
         move: { enable: true, speed: 0.7, outModes: { default: 'out' } },
         opacity: { value: { min: 0.15, max: 0.5 } },
         size: { value: { min: 1, max: 2.6 } },
