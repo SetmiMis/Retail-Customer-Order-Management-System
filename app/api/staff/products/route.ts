@@ -1,0 +1,23 @@
+import { NextResponse } from 'next/server';
+import { requireStaff } from '@/lib/auth/guard';
+import { ROLE_MANAGE } from '@/lib/oms/constants';
+import { listAllProducts, createProduct } from '@/lib/oms/products';
+
+export async function GET() {
+  const g = await requireStaff();
+  if (!g.ok) return g.response;
+  return NextResponse.json({ ok: true, products: await listAllProducts() });
+}
+
+export async function POST(req: Request) {
+  const g = await requireStaff(ROLE_MANAGE);
+  if (!g.ok) return g.response;
+  let body: Record<string, string>;
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ ok: false, msg: 'Bad request.' }, { status: 400 });
+  }
+  const result = await createProduct(g.user, body);
+  return NextResponse.json(result, { status: result.ok ? 200 : 400 });
+}

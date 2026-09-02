@@ -3,7 +3,7 @@ import { getCustomer } from '../../../../lib/auth/guard';
 import { listCustomerOrders } from '../../../../lib/oms/orders';
 import { ORDER_STATUS } from '../../../../lib/oms/constants';
 import Reveal from '../../../../components/fx/Reveal';
-import StatusBadge from '../../../../components/ui/StatusBadge';
+import StepPill from '../../../../components/portal/StepPill';
 
 export const dynamic = 'force-dynamic';
 const S = ORDER_STATUS;
@@ -59,7 +59,7 @@ export default async function PortalDashboard() {
                 <div style={{ fontWeight: 800 }}>{o.orderId}</div>
                 <div style={{ fontSize: 12, color: 'var(--muted)' }}>{o.createdAt} · {o.itemCount} item(s)</div>
               </div>
-              <StatusBadge status={o.status} />
+              <StepPill label={o.stepLabel} index={o.stepIndex} />
             </Link>
           ))}
         </div>
