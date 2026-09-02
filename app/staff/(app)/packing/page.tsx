@@ -42,6 +42,7 @@ function PackDetail({ orderId }: { orderId: string }) {
 
   useEffect(() => {
     if (!data?.lines) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setRows(Object.fromEntries(data.lines.map((l) => [l.lineNo, { packedQty: String(l.packedQty || l.expectedQty), verified: l.verified }])));
   }, [data?.lines]);
 

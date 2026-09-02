@@ -1,5 +1,5 @@
 import { OMS_SHEETS, ID_PREFIX } from './constants';
-import { readSheet, readSheets, appendRow, setCells, nextId } from '../sheets/rows';
+import { readSheet, appendRow, setCells, nextId } from '../sheets/rows';
 import { hashPassword, verifyPassword } from '../auth/hash';
 import { audit, staffActor, customerActor, SYSTEM_ACTOR } from './audit';
 import type { Customer, CustomerAddress, ServiceResult } from './types';

@@ -5,6 +5,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { LayoutGrid, Search, ClipboardList, User, LogOut } from 'lucide-react';
 import ThemeToggle from './ThemeToggle';
 import Dropdown from '../ui/Dropdown';
+import NotifBell from './NotifBell';
 import type { CustomerSession } from '../../lib/auth/session';
 
 const LINKS = [
@@ -38,6 +39,7 @@ export default function PortalShell({ customer, children }: { customer: Customer
           ))}
         </nav>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <NotifBell endpoint="/api/portal/notifications" hrefBase="/portal/orders" />
           <ThemeToggle />
           <Dropdown
             trigger={

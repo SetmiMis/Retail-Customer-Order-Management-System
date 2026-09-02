@@ -4,7 +4,7 @@ import {
   customerFacingStep, NOTIFICATION_TYPES,
 } from './constants';
 import type { OmsRole, OrderStatus } from './constants';
-import { readSheet, readSheets, appendRow, appendRows, setCells, nextId, nextOrderId } from '../sheets/rows';
+import { readSheet, appendRow, appendRows, setCells, nextId, nextOrderId } from '../sheets/rows';
 import { withLock } from '../sheets/lock';
 import { audit, staffActor, customerActor, SYSTEM_ACTOR, type Actor } from './audit';
 import { notify } from './notifications';

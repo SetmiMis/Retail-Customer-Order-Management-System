@@ -7,7 +7,7 @@ import { fetcher, postJSON } from '../../../../../lib/client';
 import { useSession } from '../../../../../components/layout/SessionProvider';
 import { useToast } from '../../../../../components/ui/ToastProvider';
 import StatusBadge from '../../../../../components/ui/StatusBadge';
-import { ORDER_STATUS, ROLE_MANAGE } from '../../../../../lib/oms/constants';
+import { ORDER_STATUS, ROLE_MANAGE, ATTACHMENT_KINDS } from '../../../../../lib/oms/constants';
 
 const S = ORDER_STATUS;
 
@@ -160,6 +160,9 @@ export default function StaffOrderDetail({ params }: { params: Promise<{ id: str
         </>
       )}
 
+      <h3 className="sectitle" style={{ marginTop: 22 }}>Attachments</h3>
+      <Attachments orderId={id} />
+
       <h3 className="sectitle" style={{ marginTop: 22 }}>Timeline</h3>
       <ul className="pfms-timeline">
         {[...o.timeline].reverse().map((e, i) => (
@@ -169,6 +172,60 @@ export default function StaffOrderDetail({ params }: { params: Promise<{ id: str
           </li>
         ))}
       </ul>
+    </div>
+  );
+}
+
+interface Att { attId: string; kind: string; fileName: string; driveUrl: string; note: string; uploadedByName: string; uploadedAt: string }
+
+function Attachments({ orderId }: { orderId: string }) {
+  const toast = useToast();
+  const { data, mutate } = useSWR<{ attachments: Att[] }>(`/api/staff/orders/${orderId}/attachments`, fetcher);
+  const [kind, setKind] = useState<string>('WhatsApp Screenshot');
+  const [note, setNote] = useState('');
+  const [busy, setBusy] = useState(false);
+  const atts = data?.attachments ?? [];
+
+  async function upload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setBusy(true);
+    const fd = new FormData();
+    fd.append('file', file);
+    fd.append('kind', kind);
+    fd.append('note', note);
+    const res = await fetch(`/api/staff/orders/${orderId}/attachments`, { method: 'POST', body: fd });
+    const body = await res.json().catch(() => ({ ok: false, msg: 'Upload failed.' }));
+    setBusy(false);
+    e.target.value = '';
+    if (!body.ok) return toast.error(body.msg || 'Upload failed.');
+    toast.success('Attachment added.');
+    setNote('');
+    mutate();
+  }
+
+  return (
+    <div className="card">
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+        <select value={kind} onChange={(e) => setKind(e.target.value)} style={{ width: 'auto' }}>
+          {ATTACHMENT_KINDS.map((k) => <option key={k}>{k}</option>)}
+        </select>
+        <input placeholder="Note (optional)" value={note} onChange={(e) => setNote(e.target.value)} style={{ flex: 1, minWidth: 160 }} />
+        <label className="btn ghost sm" style={{ cursor: 'pointer' }}>
+          {busy ? 'Uploading…' : 'Upload file'}
+          <input type="file" hidden accept="image/*,application/pdf,text/plain" onChange={upload} disabled={busy} />
+        </label>
+      </div>
+      {atts.length > 0 && (
+        <div style={{ marginTop: 12, display: 'grid', gap: 6 }}>
+          {atts.map((a) => (
+            <a key={a.attId} href={a.driveUrl} target="_blank" rel="noreferrer" className="detrow" style={{ textDecoration: 'none' }}>
+              <span className="k">{a.kind}</span>
+              <span className="v">{a.fileName}{a.note && ` — ${a.note}`}<div style={{ fontSize: 11, color: 'var(--muted)' }}>{a.uploadedByName} · {a.uploadedAt}</div></span>
+            </a>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

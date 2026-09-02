@@ -49,6 +49,7 @@ function CheckGrid({ orderId }: { orderId: string }) {
 
   useEffect(() => {
     if (!data?.lines) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setRows(Object.fromEntries(data.lines.map((l) => [l.lineNo, {
       checkedQty: String(l.checkedQty ?? ''),
       availableQty: String(l.availableQty ?? ''),

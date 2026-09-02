@@ -41,6 +41,7 @@ function VerifyDetail({ orderId }: { orderId: string }) {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (data?.checks) setChecks(Object.fromEntries(data.checks.map((c) => [c.key, c.passed])));
   }, [data?.checks]);
 

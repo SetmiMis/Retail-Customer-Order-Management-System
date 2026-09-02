@@ -4,6 +4,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { Menu, Search, LogOut } from 'lucide-react';
 import ThemeToggle from './ThemeToggle';
 import Dropdown from '../ui/Dropdown';
+import NotifBell from './NotifBell';
 import { ROUTE_LABELS } from './nav';
 import { useSession } from './SessionProvider';
 
@@ -50,6 +51,7 @@ export default function Header({ onMobileMenu, onOpenCommand }: { onMobileMenu: 
           <span>Search…</span>
           <span><kbd>Ctrl</kbd> <kbd>K</kbd></span>
         </button>
+        <NotifBell endpoint="/api/staff/notifications" hrefBase="/staff/orders" />
         <ThemeToggle />
         <Dropdown
           trigger={

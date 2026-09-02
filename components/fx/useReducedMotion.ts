@@ -22,6 +22,7 @@ export function useLowPower(): boolean {
     const cores = navigator.hardwareConcurrency || 4;
     const mem = (navigator as unknown as { deviceMemory?: number }).deviceMemory || 4;
     const small = window.matchMedia('(max-width: 720px)').matches;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLow(cores <= 4 || mem <= 4 || small);
   }, []);
   return low;

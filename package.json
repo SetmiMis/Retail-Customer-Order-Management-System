@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "ensure-sheets": "tsx scripts/ensure-sheets.ts"
+    "ensure-sheets": "tsx scripts/ensure-sheets.ts",
+    "seed-demo": "tsx scripts/seed-demo.ts"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.6",

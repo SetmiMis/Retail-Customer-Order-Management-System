@@ -30,6 +30,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     try {
       const raw = localStorage.getItem(KEY);
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       if (raw) setLines(JSON.parse(raw));
     } catch { /* ignore */ }
     setReady(true);
