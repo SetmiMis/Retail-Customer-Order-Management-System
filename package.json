@@ -7,8 +7,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "ensure-sheets": "tsx scripts/ensure-sheets.ts",
-    "seed-demo": "tsx scripts/seed-demo.ts"
+    "ensure-sheets": "tsx --env-file=.env.local scripts/ensure-sheets.ts",
+    "add-bot-user": "tsx --env-file=.env.local scripts/add-bot-user.ts",
+    "seed-demo": "tsx --env-file=.env.local scripts/seed-demo.ts"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.6",
