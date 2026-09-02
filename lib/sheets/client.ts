@@ -70,3 +70,13 @@ export function sheetId(): string {
   if (!id) throw new Error('Missing GOOGLE_SHEET_ID env var.');
   return id;
 }
+
+/**
+ * The spreadsheet that holds the Requirement System's PFMS_* tabs. Defaults to
+ * the OMS sheet when unset (single-sheet deployments), otherwise a separate
+ * spreadsheet the OMS service account must also be shared into as Editor.
+ * Only the requirement bridge + the PFMS_Items picker read/write here.
+ */
+export function pfmsSheetId(): string {
+  return process.env.PFMS_SHEET_ID || sheetId();
+}

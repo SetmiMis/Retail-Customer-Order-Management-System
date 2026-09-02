@@ -26,10 +26,11 @@ export interface SheetData {
 
 const RANGE = (tab: string) => `${tab}!A1:BZ`;
 
-/** Reads one tab (header + body), single round trip. */
-export async function readSheet(tab: string): Promise<SheetData> {
+/** Reads one tab (header + body), single round trip. `spreadsheetId` defaults to
+ *  the OMS sheet; pass `pfmsSheetId()` to read the Requirement System's sheet. */
+export async function readSheet(tab: string, spreadsheetId: string = sheetId()): Promise<SheetData> {
   const { data } = await sheetsApi().spreadsheets.values.get({
-    spreadsheetId: sheetId(),
+    spreadsheetId,
     range: RANGE(tab),
     valueRenderOption: 'UNFORMATTED_VALUE',
     dateTimeRenderOption: 'FORMATTED_STRING',
@@ -40,9 +41,9 @@ export async function readSheet(tab: string): Promise<SheetData> {
 }
 
 /** Reads many tabs in one HTTP round trip. */
-export async function readSheets(tabs: string[]): Promise<Record<string, SheetData>> {
+export async function readSheets(tabs: string[], spreadsheetId: string = sheetId()): Promise<Record<string, SheetData>> {
   const { data } = await sheetsApi().spreadsheets.values.batchGet({
-    spreadsheetId: sheetId(),
+    spreadsheetId,
     ranges: tabs.map(RANGE),
     valueRenderOption: 'UNFORMATTED_VALUE',
     dateTimeRenderOption: 'FORMATTED_STRING',
@@ -57,9 +58,9 @@ export async function readSheets(tabs: string[]): Promise<Record<string, SheetDa
 }
 
 /** Appends one row. */
-export async function appendRow(tab: string, row: unknown[]): Promise<void> {
+export async function appendRow(tab: string, row: unknown[], spreadsheetId: string = sheetId()): Promise<void> {
   await sheetsApi().spreadsheets.values.append({
-    spreadsheetId: sheetId(),
+    spreadsheetId,
     range: `${tab}!A1`,
     valueInputOption: 'USER_ENTERED',
     insertDataOption: 'INSERT_ROWS',
@@ -68,10 +69,10 @@ export async function appendRow(tab: string, row: unknown[]): Promise<void> {
 }
 
 /** Appends many rows in one call. */
-export async function appendRows(tab: string, rows: unknown[][]): Promise<void> {
+export async function appendRows(tab: string, rows: unknown[][], spreadsheetId: string = sheetId()): Promise<void> {
   if (!rows.length) return;
   await sheetsApi().spreadsheets.values.append({
-    spreadsheetId: sheetId(),
+    spreadsheetId,
     range: `${tab}!A1`,
     valueInputOption: 'USER_ENTERED',
     insertDataOption: 'INSERT_ROWS',
@@ -113,10 +114,11 @@ export async function setCell(tab: string, row1Based: number, col1Based: number,
 export async function setCells(
   tab: string,
   cells: Array<{ row1Based: number; col1Based: number; value: unknown }>,
+  spreadsheetId: string = sheetId(),
 ): Promise<void> {
   if (!cells.length) return;
   await sheetsApi().spreadsheets.values.batchUpdate({
-    spreadsheetId: sheetId(),
+    spreadsheetId,
     requestBody: {
       valueInputOption: 'USER_ENTERED',
       data: cells.map((c) => ({

@@ -1,5 +1,6 @@
 import { OMS_SHEETS, ID_PREFIX, ORDER_STATUS, LINE_STATUS, PFMS_BRIDGE } from './constants';
 import { readSheet, readSheets, appendRow, appendRows, setCells, nextId } from '../sheets/rows';
+import { pfmsSheetId } from '../sheets/client';
 import { withLock } from '../sheets/lock';
 import { audit, staffActor, SYSTEM_ACTOR } from './audit';
 import { notify } from './notifications';
@@ -52,7 +53,7 @@ async function botIdentity(): Promise<{ userId: string; name: string; role: stri
   let name = 'OMS Bot';
   let role = 'REQUIREMENT_USER';
   try {
-    const { rows } = await readSheet('PFMS_Users'); // UserID,Name,Email,Username,PassHash,Role,Department,Status,CreatedAt,Phone
+    const { rows } = await readSheet('PFMS_Users', pfmsSheetId()); // UserID,Name,Email,Username,PassHash,Role,Department,Status,CreatedAt,Phone
     const r = rows.find((x) => String(x[0]).trim() === botId);
     if (r) {
       name = String(r[1] ?? '').trim() || name;
@@ -112,22 +113,23 @@ export async function raiseRequirement(
   const bot = await botIdentity();
   const purpose = (p.purpose || `Customer Order ${orderId} / ${order.customerName}`).slice(0, 480);
 
+  const PFMS = pfmsSheetId();
   const result = await withLock(async () => {
-    const { [PFMS_BRIDGE.REQ]: reqS, [PFMS_BRIDGE.APPROVALS]: apS } = await readSheets([PFMS_BRIDGE.REQ, PFMS_BRIDGE.APPROVALS]);
+    const { [PFMS_BRIDGE.REQ]: reqS, [PFMS_BRIDGE.APPROVALS]: apS } = await readSheets([PFMS_BRIDGE.REQ, PFMS_BRIDGE.APPROVALS], PFMS);
     const reqId = nextId('REQ-', reqS.rows, 0, 3);
     const now = new Date();
 
     await appendRow(PFMS_BRIDGE.REQ, [
       reqId, now, p.requiredByDate || '', bot.userId, bot.name, 'Sales', purpose,
       PFMS_BRIDGE.SUBMITTED_STATUS, now, now,
-    ]);
+    ], PFMS);
     await appendRows(PFMS_BRIDGE.REQ_ITEMS, resolved.map((r, idx) => [
       reqId, idx + 1, r.pfmsItemId, r.name, r.unit || 'Pcs', r.qty, '', '', r.remarks || `From ${orderId}`,
-    ]));
+    ]), PFMS);
     const apId = nextId('AP-', apS.rows, 0, 3);
     await appendRow(PFMS_BRIDGE.APPROVALS, [
       apId, reqId, 'SUBMIT', bot.userId, bot.name, bot.role, '', purpose, now,
-    ]);
+    ], PFMS);
 
     // OMS-side links + line status
     const { rows: linkRows } = await readSheet(RL);
@@ -179,7 +181,7 @@ export async function reflectRequirementStatus(orderId?: string): Promise<{ upda
   const links = orderId ? (await openLinksForOrder(orderId)).filter((l) => !l.satisfied) : await allOpenLinks();
   if (!links.length) return { updated: 0, satisfied: 0, ordersAdvanced: [] };
 
-  const { rows: reqRows } = await readSheet(PFMS_BRIDGE.REQ); // RequirementID..Status(idx 7)
+  const { rows: reqRows } = await readSheet(PFMS_BRIDGE.REQ, pfmsSheetId()); // RequirementID..Status(idx 7)
   const statusByReq = new Map<string, string>();
   for (const r of reqRows) statusByReq.set(String(r[0]).trim(), String(r[7] ?? '').trim());
 

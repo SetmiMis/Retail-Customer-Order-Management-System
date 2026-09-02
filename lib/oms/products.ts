@@ -1,5 +1,6 @@
 import { OMS_SHEETS, ID_PREFIX } from './constants';
 import { readSheet, appendRow, setCells, nextId } from '../sheets/rows';
+import { pfmsSheetId } from '../sheets/client';
 import { audit, staffActor } from './audit';
 import type { Product, ServiceResult } from './types';
 import type { StaffSession } from '../auth/session';
@@ -134,9 +135,9 @@ export interface PfmsItemLite {
 export async function listPfmsItems(): Promise<PfmsItemLite[]> {
   let rows: unknown[][] = [];
   try {
-    ({ rows } = await readSheet('PFMS_Items'));
+    ({ rows } = await readSheet('PFMS_Items', pfmsSheetId()));
   } catch {
-    return []; // PFMS not set up on this sheet yet
+    return []; // PFMS not set up / not shared yet
   }
   // PFMS_Items: ItemID,SKU,ItemName,Category,Unit,Status,SourceType,PreferredVendorId,PreferredVendorName,HSCode,OriginCountry
   return rows
