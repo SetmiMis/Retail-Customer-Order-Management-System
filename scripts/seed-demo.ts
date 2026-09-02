@@ -5,6 +5,7 @@
  * Idempotent-ish: skips a product / customer / user whose key already exists.
  */
 import { readSheet, appendRow, nextId } from '../lib/sheets/rows';
+import { pfmsSheetId } from '../lib/sheets/client';
 import { OMS_SHEETS, ID_PREFIX } from '../lib/oms/constants';
 import { hashPassword } from '../lib/auth/hash';
 
@@ -51,7 +52,7 @@ async function seedProducts() {
   // grab a couple of real PFMS item ids to map onto, if PFMS_Items exists
   let pfmsIds: string[] = [];
   try {
-    const { rows: it } = await readSheet('PFMS_Items');
+    const { rows: it } = await readSheet('PFMS_Items', pfmsSheetId());
     pfmsIds = it.filter((r) => r[0] && String(r[5]).trim() !== 'Inactive').map((r) => String(r[0]).trim()).slice(0, 3);
   } catch { /* no PFMS */ }
 
