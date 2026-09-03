@@ -1,7 +1,7 @@
 'use client';
 
 import { usePathname, useRouter } from 'next/navigation';
-import { Menu, Search, LogOut } from 'lucide-react';
+import { Menu, LogOut } from 'lucide-react';
 import ThemeToggle from './ThemeToggle';
 import Dropdown from '../ui/Dropdown';
 import NotifBell from './NotifBell';
@@ -16,7 +16,7 @@ const ROLE_LABEL: Record<string, string> = {
   DISPATCH: 'Dispatch',
 };
 
-export default function Header({ onMobileMenu, onOpenCommand }: { onMobileMenu: () => void; onOpenCommand: () => void }) {
+export default function Header({ onMobileMenu }: { onMobileMenu: () => void }) {
   const pathname = usePathname();
   const router = useRouter();
   const user = useSession();
@@ -46,11 +46,6 @@ export default function Header({ onMobileMenu, onOpenCommand }: { onMobileMenu: 
       </div>
 
       <div className="app-header-right">
-        <button className="cmdk-trigger" onClick={onOpenCommand} aria-label="Open command menu">
-          <Search size={14} />
-          <span>Search…</span>
-          <span><kbd>Ctrl</kbd> <kbd>K</kbd></span>
-        </button>
         <NotifBell endpoint="/api/staff/notifications" hrefBase="/staff/orders" />
         <ThemeToggle />
         <Dropdown

@@ -1,6 +1,4 @@
 import { sheetsApi, sheetId } from './client';
-import { DATE_COLS } from '../oms/constants';
-import { fmtNice } from '../shared/format';
 
 /*****************************************************************
  * Thin row/range helpers over the Sheets v4 API. Same shape as
@@ -90,26 +88,6 @@ export function colLetter(n: number): string {
   return s;
 }
 
-/** Overwrites one row in place. rowIndex1Based counts the header as row 1 (first data row = 2). */
-export async function updateRow(tab: string, rowIndex1Based: number, row: unknown[]): Promise<void> {
-  await sheetsApi().spreadsheets.values.update({
-    spreadsheetId: sheetId(),
-    range: `${tab}!A${rowIndex1Based}:${colLetter(row.length)}${rowIndex1Based}`,
-    valueInputOption: 'USER_ENTERED',
-    requestBody: { values: [row] },
-  });
-}
-
-/** Sets a single cell (1-based row/col). */
-export async function setCell(tab: string, row1Based: number, col1Based: number, value: unknown): Promise<void> {
-  await sheetsApi().spreadsheets.values.update({
-    spreadsheetId: sheetId(),
-    range: `${tab}!${colLetter(col1Based)}${row1Based}`,
-    valueInputOption: 'USER_ENTERED',
-    requestBody: { values: [[value]] },
-  });
-}
-
 /** Writes several individual cells in one batch call. */
 export async function setCells(
   tab: string,
@@ -178,15 +156,4 @@ export function nextOrderId(rows: unknown[][]): string {
     id = `SO-${year}-${String(next).padStart(6, '0')}`;
   }
   return id;
-}
-
-/** Maps a raw row to a header-keyed object, rendering DATE_COLS via fmtNice. */
-export function rowToObj<T = Record<string, unknown>>(row: unknown[], map: ColMap): T {
-  const o: Record<string, unknown> = {};
-  for (const k of Object.keys(map)) {
-    let v = row[map[k]];
-    if (DATE_COLS.has(k)) v = v ? fmtNice(v as string) : '';
-    o[k] = v === null || v === undefined ? '' : v;
-  }
-  return o as T;
 }

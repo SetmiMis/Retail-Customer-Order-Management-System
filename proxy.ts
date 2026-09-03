@@ -27,7 +27,6 @@ const PUBLIC_PATHS = new Set<string>([
   '/staff/login',
   '/portal/login',
   '/portal/register',
-  '/portal/forgot',
 ]);
 
 function isPublic(pathname: string): boolean {

@@ -121,8 +121,8 @@ export const STATUS_OWNER_ROLE: Record<string, OmsRole[]> = {
   [S.DISPATCHED]: ROLE_DISPATCH,
 };
 
-/** Collapsed status shown to the customer (never exposes requirement / stock detail). */
-export const CUSTOMER_STATUS_STEPS = ['Order Received', 'Order Confirmed', 'Preparing', 'Packing', 'Dispatched', 'Completed'] as const;
+/** Collapsed status shown to the customer (never exposes requirement / stock detail).
+ *  The 6 step labels live in the tracking page; this maps a raw status onto one. */
 export function customerFacingStep(status: string): { label: string; index: number } {
   switch (status) {
     case S.DRAFT:
@@ -248,12 +248,6 @@ export const HEADERS = {
     'Timestamp', 'ActorType', 'ActorID', 'ActorName', 'Role', 'Action', 'Entity', 'EntityID', 'OldValue', 'NewValue', 'Details',
   ],
 } as const;
-
-/** Columns whose stored value is a date — rendered via fmtNice on read (= PFMS DATE_COLS convention). */
-export const DATE_COLS = new Set([
-  'CreatedAt', 'UpdatedAt', 'At', 'Timestamp', 'ConfirmedAt', 'CheckedAt', 'PackedAt',
-  'VerifiedAt', 'DispatchedAt', 'DispatchDate', 'UploadedAt', 'ClosedAt', 'CancelledAt', 'LastLoginAt',
-]);
 
 /*****************************************************************
  * PFMS bridge — the ONLY PFMS knowledge OMS needs. Column order copied

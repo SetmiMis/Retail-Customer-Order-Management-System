@@ -18,4 +18,3 @@ async function send(method: string, url: string, body?: unknown) {
 
 export const postJSON = (url: string, body?: unknown) => send('POST', url, body);
 export const patchJSON = (url: string, body?: unknown) => send('PATCH', url, body);
-export const delJSON = (url: string) => send('DELETE', url);
