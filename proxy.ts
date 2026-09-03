@@ -32,6 +32,7 @@ const PUBLIC_PATHS = new Set<string>([
 function isPublic(pathname: string): boolean {
   if (PUBLIC_PATHS.has(pathname)) return true;
   if (pathname.startsWith('/api/auth/')) return true;
+  if (pathname.startsWith('/api/ingest/')) return true; // Sales-CRM bridge — guarded by INGEST_TOKEN, not a cookie
   return false;
 }
 

@@ -46,7 +46,7 @@ export const ROLE_ADMIN: OmsRole[] = ['ADMIN'];
  * Order sources — lets the business move customers onto the portal
  * gradually without breaking phone / WhatsApp / email intake.
  *****************************************************************/
-export const ORDER_SOURCES = ['Customer Portal', 'Phone Call', 'WhatsApp', 'Email', 'Walk-in', 'Other'] as const;
+export const ORDER_SOURCES = ['Customer Portal', 'Phone Call', 'WhatsApp', 'Email', 'Walk-in', 'Sales CRM', 'Other'] as const;
 export type OrderSource = (typeof ORDER_SOURCES)[number];
 
 export const ATTACHMENT_KINDS = ['WhatsApp Screenshot', 'Email', 'PDF', 'Image', 'Call Note', 'Dispatch Document', 'Other'] as const;

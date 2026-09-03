@@ -95,6 +95,36 @@ export async function registerCustomer(p: {
   return { ok: true, msg: 'Account created.', id, session: sessionFrom(cust) };
 }
 
+/**
+ * Find-or-create a customer for the Sales-CRM bridge (see lib/oms/ingest.ts). Matched on the
+ * last 10 digits of the phone; created with no password (PassHash blank) so the row exists for
+ * ops immediately — the customer can still self-register later against the same email/phone.
+ */
+export async function upsertBridgeCustomer(p: {
+  company?: string; contact?: string; phone?: string; whatsapp?: string; email?: string; gst?: string;
+}): Promise<{ customerId: string; created: boolean }> {
+  const phone10 = String(p.phone || '').replace(/\D/g, '').slice(-10);
+  const { rows } = await readSheet(T);
+
+  if (phone10) {
+    const hit = rows.find(
+      (r) => String(r[C.ID]).trim() && String(r[C.PHONE] ?? '').replace(/\D/g, '').slice(-10) === phone10,
+    );
+    if (hit) return { customerId: String(hit[C.ID]).trim(), created: false };
+  }
+
+  const id = nextId(ID_PREFIX.CUSTOMER, rows, C.ID);
+  const now = new Date();
+  await appendRow(T, [
+    id, String(p.company || '').trim(), String(p.contact || '').trim(),
+    String(p.phone || '').trim(), String(p.whatsapp || p.phone || '').trim(),
+    String(p.email || '').trim(), emailNorm(p.email),
+    '', String(p.gst || '').trim(), 'Active', now, 'sales-crm', '',
+  ]);
+  await audit(SYSTEM_ACTOR, 'BRIDGE_CUSTOMER', 'Customer', id, '', p.company || p.contact || phone10, 'via Sales CRM');
+  return { customerId: id, created: true };
+}
+
 export async function authenticateCustomer(email: string, password: string): Promise<CustomerSession | null> {
   const e = emailNorm(email);
   if (!e || !password) return null;
