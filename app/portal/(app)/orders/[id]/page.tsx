@@ -4,12 +4,11 @@ import { use, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import useSWR from 'swr';
-import { RefreshCw } from 'lucide-react';
+import { motion } from 'motion/react';
+import { ChevronLeft, RefreshCw, Package, MapPin, MessageSquareText } from 'lucide-react';
 import { fetcher, postJSON } from '../../../../../lib/client';
 import { useToast } from '../../../../../components/ui/ToastProvider';
 import { celebrate } from '../../../../../lib/fx/confetti';
-
-const STEPS = ['Order Received', 'Order Confirmed', 'Preparing', 'Packing', 'Dispatched', 'Completed'];
 
 interface View {
   orderId: string; createdAt: string; status: string; stepLabel: string; stepIndex: number;
@@ -18,12 +17,28 @@ interface View {
   arrangingItems: boolean;
 }
 
+/** 6 customer-facing steps, each with a friendly line. */
+const STEPS: Array<{ label: string; blurb: string }> = [
+  { label: 'Order received', blurb: "We've got your order. Our team will share the rate with you shortly." },
+  { label: 'Order confirmed', blurb: 'Rate agreed — we are now checking availability for your items.' },
+  { label: 'Preparing', blurb: 'Your items are being gathered and readied.' },
+  { label: 'Packing', blurb: 'Your order is being packed and checked.' },
+  { label: 'Dispatched', blurb: 'Your order is on its way.' },
+  { label: 'Completed', blurb: 'Delivered. Thank you for ordering with us!' },
+];
+
+const ease = [0.16, 1, 0.3, 1] as const;
+
 export default function OrderTrackingPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();
   const toast = useToast();
   const isNew = useSearchParams().get('new') === '1';
-  const { data, isLoading } = useSWR<{ ok: boolean; order?: View }>(`/api/portal/orders/${id}`, fetcher, { refreshInterval: 20000 });
+  const { data, isLoading } = useSWR<{ ok: boolean; order?: View }>(
+    `/api/portal/orders/${id}`,
+    fetcher,
+    { refreshInterval: 20000 },
+  );
   const o = data?.order;
 
   useEffect(() => {
@@ -37,68 +52,150 @@ export default function OrderTrackingPage({ params }: { params: Promise<{ id: st
     router.push(`/portal/orders/${res.orderId}?new=1`);
   }
 
-  if (isLoading) return <div className="card"><div className="skeleton" style={{ height: 160 }} /></div>;
-  if (!o) return <div className="card" style={{ padding: 40, textAlign: 'center' }}>Order not found. <Link href="/portal/orders" style={{ color: 'var(--accent)' }}>Back to my orders</Link></div>;
+  if (isLoading) {
+    return (
+      <div style={{ maxWidth: 620, margin: '0 auto', display: 'grid', gap: 14 }}>
+        <div className="skeleton" style={{ height: 150, borderRadius: 'var(--radius)' }} />
+        <div className="skeleton" style={{ height: 260, borderRadius: 'var(--radius)' }} />
+      </div>
+    );
+  }
+  if (!o) {
+    return (
+      <div className="card" style={{ maxWidth: 620, margin: '0 auto', textAlign: 'center', padding: 44 }}>
+        <p style={{ color: 'var(--muted)', margin: '0 0 14px' }}>We couldn&apos;t find that order.</p>
+        <Link href="/portal/orders" className="btn primary">Back to my orders</Link>
+      </div>
+    );
+  }
 
-  const cancelled = o.status === 'Cancelled';
+  const cancelled = o.status === 'Cancelled' || o.stepIndex < 0;
+  const current = STEPS[o.stepIndex] ?? STEPS[0];
+  const pct = cancelled ? 0 : Math.round((o.stepIndex / (STEPS.length - 1)) * 100);
 
   return (
-    <div style={{ maxWidth: 680 }}>
-      <Link href="/portal/orders" style={{ fontSize: 13, color: 'var(--muted)' }}>← My orders</Link>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 12, flexWrap: 'wrap', margin: '8px 0 20px' }}>
+    <div style={{ maxWidth: 620, margin: '0 auto' }}>
+      <Link
+        href="/portal/orders"
+        style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 13, color: 'var(--muted)', textDecoration: 'none' }}
+      >
+        <ChevronLeft size={15} /> My orders
+      </Link>
+
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap', margin: '10px 0 18px' }}>
         <div>
-          <h1 className="brand-heading" style={{ fontSize: 24, margin: 0 }}>{o.orderId}</h1>
-          <p className="tagline" style={{ margin: '2px 0 0' }}>{o.createdAt} · {o.itemCount} item(s)</p>
+          <h1 className="brand-heading" style={{ fontSize: 24, margin: 0, letterSpacing: '0.3px' }}>{o.orderId}</h1>
+          <p className="tagline" style={{ margin: '3px 0 0' }}>Placed {o.createdAt} · {o.itemCount} item{o.itemCount === 1 ? '' : 's'}</p>
         </div>
-        <button className="btn ghost sm" onClick={reorder}><RefreshCw size={14} /> Re-order</button>
+        <button className="btn ghost sm" onClick={reorder}>
+          <RefreshCw size={14} /> Re-order
+        </button>
       </div>
 
-      {cancelled ? (
-        <div className="card" style={{ borderColor: 'var(--red)', color: 'var(--red)', fontWeight: 700 }}>This order was cancelled.</div>
-      ) : (
-        <div className="card">
-          <div className="stepper">
-            {STEPS.map((label, i) => {
-              const state = i < o.stepIndex ? 'done' : i === o.stepIndex ? 'active' : '';
+      {/* Status hero */}
+      <motion.div
+        className="otrack-hero"
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, ease }}
+        style={cancelled ? { background: 'color-mix(in srgb, var(--hue-issue) 10%, var(--card))' } : undefined}
+      >
+        <div className="eyebrow" style={cancelled ? { color: 'var(--hue-issue)' } : undefined}>
+          {cancelled ? 'Cancelled' : `Step ${o.stepIndex + 1} of ${STEPS.length}`}
+        </div>
+        <h2>{cancelled ? 'This order was cancelled' : current.label}</h2>
+        <p>
+          {cancelled
+            ? 'If this looks wrong, please get in touch and we will sort it out.'
+            : current.blurb}
+        </p>
+
+        {!cancelled && (
+          <div className="otrack-meter" aria-label={`${pct}% complete`}>
+            <motion.span
+              initial={{ width: 0 }}
+              animate={{ width: `${Math.max(pct, 6)}%` }}
+              transition={{ duration: 0.7, ease, delay: 0.15 }}
+            />
+          </div>
+        )}
+
+        {o.arrangingItems && !cancelled && (
+          <div className="otrack-arranging">
+            <span aria-hidden>⏳</span>
+            <span>Some items are currently being arranged. We&apos;ll move your order forward as soon as they&apos;re available.</span>
+          </div>
+        )}
+      </motion.div>
+
+      {/* Vertical timeline */}
+      {!cancelled && (
+        <div className="card" style={{ marginTop: 14 }}>
+          <ol className="vtl">
+            {STEPS.map((s, i) => {
+              const state = i < o.stepIndex ? 'done' : i === o.stepIndex ? 'current' : '';
               return (
-                <div key={label} className={`step ${state}`}>
-                  <div className="bar" />
-                  <div className="dot">{i < o.stepIndex ? '✓' : i + 1}</div>
-                  <div className="cap">{label}</div>
-                </div>
+                <li key={s.label} className={state}>
+                  <span className="node" aria-hidden>{i < o.stepIndex ? '✓' : i + 1}</span>
+                  <div className="lbl">{s.label}</div>
+                  {(state === 'current') && <div className="sub">{s.blurb}</div>}
+                </li>
               );
             })}
-          </div>
-          {o.arrangingItems && (
-            <p style={{ marginTop: 18, fontSize: 13, color: 'var(--hue-pending)', fontWeight: 600 }}>
-              Some items are currently being arranged. We&apos;ll move your order forward as soon as they&apos;re available.
-            </p>
-          )}
+          </ol>
         </div>
       )}
 
-      <h2 className="brand-heading" style={{ fontSize: 16, margin: '24px 0 10px' }}>Items</h2>
+      {/* Items */}
+      <SectionHeading icon={<Package size={15} />} text={`Items (${o.itemCount})`} />
       <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
         {o.items.map((it, i) => (
-          <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 16px', borderBottom: i < o.items.length - 1 ? '1px solid var(--line)' : 'none' }}>
-            <span style={{ fontWeight: 600 }}>{it.productName}</span>
-            <span style={{ color: 'var(--muted)' }}>{it.orderedQty} {it.unit}</span>
+          <div
+            key={i}
+            style={{
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12,
+              padding: '13px 16px', borderBottom: i < o.items.length - 1 ? '1px solid var(--line)' : 'none',
+            }}
+          >
+            <span style={{ fontWeight: 600, fontSize: 14 }}>{it.productName}</span>
+            <span style={{ color: 'var(--muted)', fontSize: 13, whiteSpace: 'nowrap' }}>
+              {it.orderedQty} {it.unit}
+            </span>
           </div>
         ))}
       </div>
 
-      {o.customerRemark && (
-        <>
-          <h2 className="brand-heading" style={{ fontSize: 16, margin: '24px 0 8px' }}>Your remark</h2>
-          <div className="card" style={{ fontSize: 13 }}>{o.customerRemark}</div>
-        </>
-      )}
       {o.deliverySnapshot && (
         <>
-          <h2 className="brand-heading" style={{ fontSize: 16, margin: '24px 0 8px' }}>Delivery</h2>
-          <div className="card" style={{ fontSize: 13, whiteSpace: 'pre-line' }}>{o.deliverySnapshot}</div>
+          <SectionHeading icon={<MapPin size={15} />} text="Delivery" />
+          <div className="card" style={{ fontSize: 13, whiteSpace: 'pre-line', color: 'var(--muted)', lineHeight: 1.6 }}>
+            {o.deliverySnapshot}
+          </div>
         </>
       )}
+
+      {o.customerRemark && (
+        <>
+          <SectionHeading icon={<MessageSquareText size={15} />} text="Your remark" />
+          <div className="card" style={{ fontSize: 13, color: 'var(--muted)' }}>“{o.customerRemark}”</div>
+        </>
+      )}
+
+      <p style={{ textAlign: 'center', fontSize: 11.5, color: 'var(--muted)', margin: '22px 0 0' }}>
+        Rate for this order is confirmed separately by our team — no price is shown here.
+      </p>
     </div>
+  );
+}
+
+function SectionHeading({ icon, text }: { icon: React.ReactNode; text: string }) {
+  return (
+    <h2
+      className="brand-heading"
+      style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 15, margin: '24px 0 10px', color: 'var(--ink)' }}
+    >
+      <span style={{ color: 'var(--accent)' }}>{icon}</span>
+      {text}
+    </h2>
   );
 }

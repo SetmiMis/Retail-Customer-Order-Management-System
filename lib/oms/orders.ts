@@ -5,6 +5,7 @@ import {
 } from './constants';
 import type { OmsRole, OrderStatus } from './constants';
 import { readSheet, appendRow, appendRows, setCells, nextId, nextOrderId } from '../sheets/rows';
+import { fmtNice } from '../shared/format';
 import { withLock } from '../sheets/lock';
 import { audit, staffActor, customerActor, SYSTEM_ACTOR, type Actor } from './audit';
 import { notify } from './notifications';
@@ -276,7 +277,7 @@ export async function listCustomerOrders(customerId: string): Promise<CustomerOr
     const step = customerFacingStep(o.status);
     return {
       orderId: o.orderId,
-      createdAt: o.createdAt,
+      createdAt: fmtNice(o.createdAt),
       status: o.status,
       stepLabel: step.label,
       stepIndex: step.index,
