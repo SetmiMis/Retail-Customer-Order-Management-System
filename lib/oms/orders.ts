@@ -4,7 +4,7 @@ import {
   customerFacingStep, NOTIFICATION_TYPES,
 } from './constants';
 import type { OmsRole, OrderStatus } from './constants';
-import { readSheet, appendRow, appendRows, setCells, nextId, nextOrderId } from '../sheets/rows';
+import { readSheet, readSheets, appendRow, appendRows, setCells, nextId, nextOrderId } from '../sheets/rows';
 import { fmtNice } from '../shared/format';
 import { withLock } from '../sheets/lock';
 import { audit, staffActor, customerActor, SYSTEM_ACTOR, type Actor } from './audit';
@@ -271,10 +271,13 @@ async function orderRow1(orderId: string): Promise<{ row1: number; order: Order 
 
 export async function listCustomerOrders(customerId: string): Promise<CustomerOrderView[]> {
   const orders = (await listOrders({ customerId }));
-  const { rows: itemRows } = await readSheet(OI);
+  const { [OI]: itemS, [OMS_SHEETS.DISPATCHES]: dispS } = await readSheets([OI, OMS_SHEETS.DISPATCHES]);
+  const itemRows = itemS.rows;
   return orders.map((o) => {
     const mine = itemRows.filter((r) => String(r[IC.ORDER]).trim() === o.orderId);
     const step = customerFacingStep(o.status);
+    // latest dispatch record for this order (cols: 1=OrderID,2=Date,3=Transporter,4=AWB,5=Vehicle)
+    const disp = dispS.rows.filter((r) => String(r[1]).trim() === o.orderId).at(-1);
     return {
       orderId: o.orderId,
       createdAt: fmtNice(o.createdAt),
@@ -284,8 +287,9 @@ export async function listCustomerOrders(customerId: string): Promise<CustomerOr
       itemCount: mine.length,
       customerRemark: o.customerRemark,
       deliverySnapshot: o.deliverySnapshot,
-      items: mine.map((r) => ({ productName: String(r[IC.PNAME] ?? ''), unit: String(r[IC.UNIT] ?? 'Pcs'), orderedQty: Number(r[IC.ORDERED]) || 0 })),
+      items: mine.map((r) => ({ productName: String(r[IC.PNAME] ?? ''), unit: String(r[IC.UNIT] ?? 'Pcs'), orderedQty: Number(r[IC.ORDERED]) || 0, dispatchedQty: Number(r[IC.DISPATCHED]) || 0 })),
       arrangingItems: ([ORDER_STATUS.REQUIREMENT_PENDING, ORDER_STATUS.PARTIAL_AVAILABLE] as string[]).includes(o.status),
+      dispatch: disp ? { date: fmtNice(String(disp[2] ?? '')), transporter: String(disp[3] ?? ''), awbLrNo: String(disp[4] ?? ''), vehicleNo: String(disp[5] ?? '') } : null,
     };
   });
 }

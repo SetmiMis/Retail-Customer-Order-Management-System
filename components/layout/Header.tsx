@@ -5,6 +5,7 @@ import { Menu, LogOut } from 'lucide-react';
 import ThemeToggle from './ThemeToggle';
 import Dropdown from '../ui/Dropdown';
 import NotifBell from './NotifBell';
+import GlobalSearch from './GlobalSearch';
 import { ROUTE_LABELS } from './nav';
 import { useSession } from './SessionProvider';
 
@@ -46,6 +47,7 @@ export default function Header({ onMobileMenu }: { onMobileMenu: () => void }) {
       </div>
 
       <div className="app-header-right">
+        <GlobalSearch />
         <NotifBell endpoint="/api/staff/notifications" hrefBase="/staff/orders" />
         <ThemeToggle />
         <Dropdown

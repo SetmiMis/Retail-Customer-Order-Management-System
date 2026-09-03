@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import useSWR from 'swr';
 import { motion } from 'motion/react';
-import { ChevronLeft, RefreshCw, Package, MapPin, MessageSquareText } from 'lucide-react';
+import { ChevronLeft, RefreshCw, Package, MapPin, MessageSquareText, Truck } from 'lucide-react';
 import { fetcher, postJSON } from '../../../../../lib/client';
 import { useToast } from '../../../../../components/ui/ToastProvider';
 import { celebrate } from '../../../../../lib/fx/confetti';
@@ -13,8 +13,9 @@ import { celebrate } from '../../../../../lib/fx/confetti';
 interface View {
   orderId: string; createdAt: string; status: string; stepLabel: string; stepIndex: number;
   itemCount: number; customerRemark: string; deliverySnapshot: string;
-  items: Array<{ productName: string; unit: string; orderedQty: number }>;
+  items: Array<{ productName: string; unit: string; orderedQty: number; dispatchedQty: number }>;
   arrangingItems: boolean;
+  dispatch: { transporter: string; awbLrNo: string; vehicleNo: string; date: string } | null;
 }
 
 /** 6 customer-facing steps, each with a friendly line. */
@@ -159,11 +160,25 @@ export default function OrderTrackingPage({ params }: { params: Promise<{ id: st
           >
             <span style={{ fontWeight: 600, fontSize: 14 }}>{it.productName}</span>
             <span style={{ color: 'var(--muted)', fontSize: 13, whiteSpace: 'nowrap' }}>
-              {it.orderedQty} {it.unit}
+              {it.dispatchedQty > 0 && it.dispatchedQty < it.orderedQty
+                ? `${it.dispatchedQty} of ${it.orderedQty} ${it.unit} dispatched`
+                : `${it.orderedQty} ${it.unit}`}
             </span>
           </div>
         ))}
       </div>
+
+      {o.dispatch && (o.dispatch.transporter || o.dispatch.awbLrNo || o.dispatch.vehicleNo) && (
+        <>
+          <SectionHeading icon={<Truck size={15} />} text="Shipment" />
+          <div className="card" style={{ fontSize: 13, color: 'var(--muted)', display: 'grid', gap: 4 }}>
+            {o.dispatch.date && <div><b style={{ color: 'var(--ink)' }}>Dispatched</b> {o.dispatch.date}</div>}
+            {o.dispatch.transporter && <div><b style={{ color: 'var(--ink)' }}>Via</b> {o.dispatch.transporter}</div>}
+            {o.dispatch.awbLrNo && <div><b style={{ color: 'var(--ink)' }}>Tracking / LR</b> {o.dispatch.awbLrNo}</div>}
+            {o.dispatch.vehicleNo && <div><b style={{ color: 'var(--ink)' }}>Vehicle</b> {o.dispatch.vehicleNo}</div>}
+          </div>
+        </>
+      )}
 
       {o.deliverySnapshot && (
         <>

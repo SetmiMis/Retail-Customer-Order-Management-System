@@ -3,13 +3,14 @@
 import { use, useState } from 'react';
 import Link from 'next/link';
 import useSWR from 'swr';
-import { fetcher, postJSON } from '../../../../../lib/client';
+import { fetcher, postJSON, patchJSON } from '../../../../../lib/client';
 import { useSession } from '../../../../../components/layout/SessionProvider';
 import { useToast } from '../../../../../components/ui/ToastProvider';
 import StatusBadge from '../../../../../components/ui/StatusBadge';
-import { ORDER_STATUS, ROLE_MANAGE, ATTACHMENT_KINDS } from '../../../../../lib/oms/constants';
+import { ORDER_STATUS, ROLE_MANAGE, ROLE_ORDER_ENTRY, ATTACHMENT_KINDS } from '../../../../../lib/oms/constants';
 
 const S = ORDER_STATUS;
+const EDITABLE_STATUSES: string[] = [S.RECEIVED, S.CONFIRM_PENDING, S.CONFIRMED, S.QTY_CHECK, S.REQUIREMENT_PENDING, S.PARTIAL_AVAILABLE];
 
 interface Item { lineNo: number; productName: string; sku: string; unit: string; orderedQty: number; checkedQty: number | null; availableQty: number | null; shortQty: number; packedQty: number; dispatchedQty: number; lineStatus: string }
 interface ReqLink { requirementId: string; orderLineNo: number; mirroredStatus: string; satisfied: boolean; requiredQty: number }
@@ -28,6 +29,7 @@ export default function StaffOrderDetail({ params }: { params: Promise<{ id: str
   const { data, mutate, isLoading } = useSWR<{ ok: boolean; order?: Order }>(`/api/staff/orders/${id}`, fetcher);
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState('');
+  const [editItems, setEditItems] = useState(false);
   const o = data?.order;
 
   async function act(url: string, body: unknown, label: string) {
@@ -78,6 +80,9 @@ export default function StaffOrderDetail({ params }: { params: Promise<{ id: str
           <>
             <Link href={`/staff/quantity-check?order=${id}`} className="btn ghost sm">Quantity check</Link>
             <button className="btn primary sm" disabled={!!busy} onClick={() => act('/api/staff/requirements', {}, 'reflect')}>Refresh requirement status</button>
+            {canDispatch && o.items.some((it) => it.dispatchedQty === 0 && ['Ready', 'Available', 'Packed'].includes(it.lineStatus)) && (
+              <Link href={`/staff/dispatch?order=${id}`} className="btn ghost sm">Dispatch ready lines →</Link>
+            )}
           </>
         )}
         {o.status === S.READY_FOR_PACKING && canWh && (
@@ -118,8 +123,14 @@ export default function StaffOrderDetail({ params }: { params: Promise<{ id: str
         </div>
       </div>
 
-      <h3 className="sectitle" style={{ marginTop: 22 }}>Items</h3>
-      <div className="tablecard">
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 22 }}>
+        <h3 className="sectitle" style={{ margin: 0 }}>Items</h3>
+        {ROLE_ORDER_ENTRY.includes(role) && EDITABLE_STATUSES.includes(o.status) && (
+          <button className="btn ghost sm" onClick={() => setEditItems((v) => !v)}>{editItems ? 'Close' : 'Edit items'}</button>
+        )}
+      </div>
+      {editItems && <ItemsEditor orderId={id} items={o.items} onDone={() => { setEditItems(false); mutate(); }} />}
+      <div className="tablecard" style={{ marginTop: 10 }}>
         <table>
           <thead><tr><th>Product</th><th>Ordered</th><th>Checked</th><th>Available</th><th>Short</th><th>Packed</th><th>Line</th></tr></thead>
           <tbody>
@@ -226,6 +237,61 @@ function Attachments({ orderId }: { orderId: string }) {
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+function ItemsEditor({ orderId, items, onDone }: { orderId: string; items: Item[]; onDone: () => void }) {
+  const toast = useToast();
+  const { data: pData } = useSWR<{ products: Array<{ productId: string; name: string; sku: string; status: string }> }>('/api/staff/products', fetcher);
+  const products = (pData?.products ?? []).filter((p) => p.status !== 'Inactive');
+  const [qty, setQty] = useState<Record<number, string>>(() => Object.fromEntries(items.map((it) => [it.lineNo, String(it.orderedQty)])));
+  const [removed, setRemoved] = useState<Record<number, boolean>>({});
+  const [adds, setAdds] = useState<Array<{ productId: string; qty: string }>>([]);
+  const [busy, setBusy] = useState(false);
+
+  async function save() {
+    const edits = [
+      ...items
+        .filter((it) => removed[it.lineNo] || Number(qty[it.lineNo]) !== it.orderedQty)
+        .map((it) => ({ lineNo: it.lineNo, orderedQty: Number(qty[it.lineNo]) || 0, remove: !!removed[it.lineNo] })),
+      ...adds.filter((a) => a.productId && Number(a.qty) > 0).map((a) => ({ productId: a.productId, orderedQty: Number(a.qty) })),
+    ];
+    if (!edits.length) return toast.error('No changes.');
+    setBusy(true);
+    const r = await patchJSON(`/api/staff/orders/${orderId}/items`, { edits });
+    setBusy(false);
+    if (!r.ok) return toast.error(r.msg || 'Failed.');
+    toast.success(r.msg || 'Order updated.');
+    onDone();
+  }
+
+  return (
+    <div className="card" style={{ marginTop: 10 }}>
+      {items.map((it) => (
+        <div key={it.lineNo} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 0', opacity: removed[it.lineNo] ? 0.4 : 1 }}>
+          <span style={{ flex: 1, fontSize: 13 }}>{it.productName} <span style={{ color: 'var(--muted)' }}>· {it.unit}</span></span>
+          <input style={{ width: 76 }} inputMode="numeric" value={qty[it.lineNo] ?? ''} disabled={removed[it.lineNo]}
+            onChange={(e) => setQty((q) => ({ ...q, [it.lineNo]: e.target.value }))} />
+          <button className="btn ghost sm" style={{ color: 'var(--red)' }} onClick={() => setRemoved((r) => ({ ...r, [it.lineNo]: !r[it.lineNo] }))}>
+            {removed[it.lineNo] ? 'Keep' : 'Remove'}
+          </button>
+        </div>
+      ))}
+      {adds.map((a, i) => (
+        <div key={`a${i}`} style={{ display: 'flex', gap: 10, padding: '6px 0', alignItems: 'center' }}>
+          <select style={{ flex: 1 }} value={a.productId} onChange={(e) => setAdds((x) => x.map((y, j) => (j === i ? { ...y, productId: e.target.value } : y)))}>
+            <option value="">— add product —</option>
+            {products.map((p) => <option key={p.productId} value={p.productId}>{p.name}{p.sku ? ` (${p.sku})` : ''}</option>)}
+          </select>
+          <input style={{ width: 76 }} inputMode="numeric" value={a.qty} onChange={(e) => setAdds((x) => x.map((y, j) => (j === i ? { ...y, qty: e.target.value } : y)))} />
+        </div>
+      ))}
+      <div className="actions" style={{ marginTop: 8 }}>
+        <button className="btn ghost sm" onClick={() => setAdds((x) => [...x, { productId: '', qty: '1' }])}>+ Add line</button>
+        <button className="btn primary sm" disabled={busy} onClick={save}>{busy ? 'Saving…' : 'Save changes'}</button>
+      </div>
+      <p style={{ fontSize: 11, color: 'var(--muted)', margin: '8px 0 0' }}>Lines already sent to a requirement can&apos;t be changed here.</p>
     </div>
   );
 }

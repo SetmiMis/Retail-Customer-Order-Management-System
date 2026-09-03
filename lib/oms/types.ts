@@ -153,6 +153,7 @@ export interface CustomerOrderView {
   itemCount: number;
   customerRemark: string;
   deliverySnapshot: string;
-  items: Array<{ productName: string; unit: string; orderedQty: number }>;
+  items: Array<{ productName: string; unit: string; orderedQty: number; dispatchedQty: number }>;
   arrangingItems: boolean; // "some items are being arranged" — no numbers, no reason
+  dispatch: { transporter: string; awbLrNo: string; vehicleNo: string; date: string } | null;
 }

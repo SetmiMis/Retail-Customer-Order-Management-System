@@ -88,6 +88,16 @@ export function colLetter(n: number): string {
   return s;
 }
 
+/** Overwrites one row in place. rowIndex1Based counts the header as row 1 (first data row = 2). */
+export async function updateRow(tab: string, rowIndex1Based: number, row: unknown[]): Promise<void> {
+  await sheetsApi().spreadsheets.values.update({
+    spreadsheetId: sheetId(),
+    range: `${tab}!A${rowIndex1Based}:${colLetter(Math.max(row.length, 1))}${rowIndex1Based}`,
+    valueInputOption: 'USER_ENTERED',
+    requestBody: { values: [row] },
+  });
+}
+
 /** Writes several individual cells in one batch call. */
 export async function setCells(
   tab: string,

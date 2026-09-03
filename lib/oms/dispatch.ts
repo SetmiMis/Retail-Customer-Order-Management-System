@@ -14,7 +14,12 @@ const { C, IC } = _colmaps;
 const DC = { ID: 0, ORDER: 1, DATE: 2, TRANS: 3, AWB: 4, VEH: 5, REMARKS: 6, DOC: 7, BYID: 8, BYNAME: 9, AT: 10 };
 
 export async function dispatchQueue(): Promise<Order[]> {
-  return (await listOrders()).filter((o) => o.status === ORDER_STATUS.READY_FOR_DISPATCH || o.status === ORDER_STATUS.DISPATCHED);
+  return (await listOrders()).filter(
+    (o) => o.status === ORDER_STATUS.READY_FOR_DISPATCH
+      || o.status === ORDER_STATUS.DISPATCHED
+      // partially-dispatched orders sitting on the backorder
+      || (o.status === ORDER_STATUS.PARTIAL_AVAILABLE && (o.items ?? []).some((it) => it.dispatchedQty > 0)),
+  );
 }
 
 export interface DispatchInput {
@@ -24,18 +29,34 @@ export interface DispatchInput {
   vehicleNo?: string;
   remarks?: string;
   docDriveUrl?: string;
+  lineNos?: number[]; // omit = every shippable line; subset = partial dispatch
 }
 
-/** READY_FOR_DISPATCH → DISPATCHED. Freezes DispatchedQty = PackedQty per line,
- *  writes the OMS_Dispatches record, notifies the customer. */
+const SHIPPABLE: string[] = [LINE_STATUS.READY, LINE_STATUS.AVAILABLE, LINE_STATUS.PACKED];
+
+/**
+ * Dispatch the ready lines. With `lineNos` (or when the order still has lines
+ * waiting on a requirement and policy = allow partial) this ships a subset and
+ * leaves the order in "Partially Available" until a later call clears the rest;
+ * once every line is dispatched the order moves to DISPATCHED.
+ */
 export async function recordDispatch(actor: StaffSession, orderId: string, p: DispatchInput): Promise<ServiceResult> {
   const found = await orderRow1(orderId);
   if (!found) return { ok: false, msg: 'Order not found.' };
   const { row1, order } = found;
-  if (order.status !== ORDER_STATUS.READY_FOR_DISPATCH) {
+  const partialOk = order.status === ORDER_STATUS.PARTIAL_AVAILABLE
+    || (order.status === ORDER_STATUS.REQUIREMENT_PENDING && order.partialPolicy.startsWith('Allow'));
+  if (order.status !== ORDER_STATUS.READY_FOR_DISPATCH && !partialOk) {
     return { ok: false, msg: `Order is "${order.status}", not ready for dispatch.` };
   }
   if (!p.transporter && !p.vehicleNo) return { ok: false, msg: 'Enter a transporter/courier or a vehicle number.' };
+
+  const items = await itemsFor(orderId);
+  const want = p.lineNos?.length ? new Set(p.lineNos.map(Number)) : null;
+  const shipping = items.filter(
+    (it) => it.dispatchedQty === 0 && SHIPPABLE.includes(it.lineStatus) && (!want || want.has(it.lineNo)),
+  );
+  if (!shipping.length) return { ok: false, msg: 'No packed / ready lines to dispatch.' };
 
   const { rows } = await readSheet(D);
   const id = nextId(ID_PREFIX.DISPATCH, rows, 0);
@@ -46,10 +67,9 @@ export async function recordDispatch(actor: StaffSession, orderId: string, p: Di
     actor.userId, actor.name, now,
   ]);
 
-  const items = await itemsFor(orderId);
   const { rows: itemRows } = await readSheet(OI);
   const cells: Array<{ row1Based: number; col1Based: number; value: unknown }> = [];
-  for (const it of items) {
+  for (const it of shipping) {
     const idx = itemRows.findIndex((r) => String(r[IC.ORDER]).trim() === orderId && Number(r[IC.LINE]) === it.lineNo);
     if (idx !== -1) {
       cells.push(
@@ -60,14 +80,22 @@ export async function recordDispatch(actor: StaffSession, orderId: string, p: Di
   }
   if (cells.length) await setCells(OI, cells);
 
+  const fresh = await itemsFor(orderId);
+  const allOut = fresh.every((it) => it.lineStatus === LINE_STATUS.DISPATCHED);
+  const newStatus = allOut ? ORDER_STATUS.DISPATCHED : ORDER_STATUS.PARTIAL_AVAILABLE;
   await setCells(O, [
-    { row1Based: row1, col1Based: C.STATUS + 1, value: ORDER_STATUS.DISPATCHED },
+    { row1Based: row1, col1Based: C.STATUS + 1, value: newStatus },
     { row1Based: row1, col1Based: C.UPDATED + 1, value: now },
   ]);
-  await pushHistory(orderId, order.status, ORDER_STATUS.DISPATCHED, staffActor(actor), [p.transporter, p.awbLrNo].filter(Boolean).join(' · '));
-  await audit(staffActor(actor), 'DISPATCH', 'Order', orderId, order.status, ORDER_STATUS.DISPATCHED, id);
-  await notify({ audience: 'Customer', customerId: order.customerId, orderId, type: 'Order Dispatched', message: `Your order ${orderId} has been dispatched${p.transporter ? ` via ${p.transporter}` : ''}${p.awbLrNo ? ` (${p.awbLrNo})` : ''}.` });
-  return { ok: true, msg: `${orderId} dispatched.`, dispatchId: id };
+  await pushHistory(orderId, order.status, newStatus, staffActor(actor), `${shipping.length} line(s) · ${[p.transporter, p.awbLrNo].filter(Boolean).join(' · ')}`);
+  await audit(staffActor(actor), allOut ? 'DISPATCH' : 'PARTIAL_DISPATCH', 'Order', orderId, order.status, newStatus, id);
+  await notify({
+    audience: 'Customer', customerId: order.customerId, orderId, type: 'Order Dispatched',
+    message: allOut
+      ? `Your order ${orderId} has been dispatched${p.transporter ? ` via ${p.transporter}` : ''}${p.awbLrNo ? ` (${p.awbLrNo})` : ''}.`
+      : `${shipping.length} item(s) from your order ${orderId} have shipped${p.transporter ? ` via ${p.transporter}` : ''}. The rest will follow once ready.`,
+  });
+  return { ok: true, msg: allOut ? `${orderId} fully dispatched.` : `${shipping.length} line(s) dispatched — ${fresh.filter((it) => it.lineStatus !== LINE_STATUS.DISPATCHED).length} still pending.`, dispatchId: id };
 }
 
 export async function completeOrder(actor: StaffSession, orderId: string): Promise<ServiceResult> {
