@@ -5,7 +5,7 @@ export function celebrate(): void {
   if (typeof window === 'undefined') return;
   if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 
-  const colors = ['#005a84', '#6ec1e4', '#0693e3', '#ff8f00', '#4fae5a'];
+  const colors = ['#005a84', '#6ec1e4', '#0693e3', '#7c5cff', '#4fae5a'];
   const fire = (particleRatio: number, opts: confetti.Options) =>
     confetti({ origin: { y: 0.7 }, colors, ...opts, particleCount: Math.floor(200 * particleRatio) });
 
