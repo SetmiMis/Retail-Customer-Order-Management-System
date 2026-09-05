@@ -114,6 +114,9 @@ export async function raiseRequirement(
   const purpose = (p.purpose || `Customer Order ${orderId} / ${order.customerName}`).slice(0, 480);
 
   const PFMS = pfmsSheetId();
+  // Lock the PFMS spreadsheet itself — that's where the ID-generating reads/writes below
+  // land, so a lock on this app's own sheet (the default) would give no real protection
+  // against a concurrent write from the actual Purchase FMS app on the same sheet.
   const result = await withLock(async () => {
     const { [PFMS_BRIDGE.REQ]: reqS, [PFMS_BRIDGE.APPROVALS]: apS } = await readSheets([PFMS_BRIDGE.REQ, PFMS_BRIDGE.APPROVALS], PFMS);
     const reqId = nextId('REQ-', reqS.rows, 0, 3);
@@ -158,7 +161,7 @@ export async function raiseRequirement(
     }
 
     return { reqId, count: resolved.length };
-  });
+  }, PFMS);
 
   await audit(staffActor(actor), 'RAISE_REQUIREMENT', 'Order', orderId, '', result.reqId, `${result.count} line(s) → PFMS`);
   await notify({ audience: 'Internal', staffRole: 'MANAGER', orderId, type: 'Requirement Created', message: `${orderId}: requirement ${result.reqId} raised in Purchase FMS for ${result.count} short item(s).` });
